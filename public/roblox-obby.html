@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Roblox Obby 3D - Browsergame</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #82ccdd;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    #canvas-container {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    /* Top HUD */
+    .hud {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .hud-card {
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(8px);
+      padding: 10px 18px;
+      border-radius: 14px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      display: flex;
+      gap: 16px;
+      font-weight: 600;
+      font-size: 15px;
+      color: #1e293b;
+    }
+    .hud-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    /* Controls hint */
+    .controls-hint {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(15, 23, 42, 0.82);
+      color: #fff;
+      padding: 12px 18px;
+      border-radius: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+      pointer-events: none;
+      z-index: 10;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+    .key-badge {
+      background: rgba(255, 255, 255, 0.22);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: bold;
+      font-family: monospace;
+    }
+    /* Mobile Controls */
+    .mobile-controls {
+      position: absolute;
+      bottom: 24px;
+      left: 24px;
+      right: 24px;
+      display: none;
+      justify-content: space-between;
+      align-items: flex-end;
+      z-index: 20;
+    }
+    .touch-btn {
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.85);
+      border: 3px solid #2563eb;
+      color: #2563eb;
+      font-size: 16px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+      touch-action: manipulation;
+    }
+    .touch-btn:active {
+      background: #2563eb;
+      color: #fff;
+      transform: scale(0.95);
+    }
+    /* Victory Modal */
+    #victory-modal {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+    .modal-card {
+      background: #fff;
+      border-radius: 20px;
+      padding: 32px;
+      max-width: 380px;
+      text-align: center;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.3);
+    }
+    .modal-card h1 {
+      font-size: 26px;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+    .modal-card p {
+      color: #64748b;
+      margin-bottom: 20px;
+    }
+    .modal-card button {
+      background: #10b981;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      width: 100%;
+    }
+    .modal-card button:hover {
+      background: #059669;
+    }
+    @media (max-width: 768px) {
+      .controls-hint { display: none; }
+      .mobile-controls { display: flex; }
+    }
+  </style>
+  <!-- Three.js CDN -->
+  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <!-- HUD -->
+  <div class="hud">
+    <div class="hud-card">
+      <div class="hud-badge">🚩 Stage: <span id="ui-stage" style="color:#2563eb;">1</span> / 6</div>
+      <div class="hud-badge">⭐ Münzen: <span id="ui-coins" style="color:#eab308;">0</span></div>
+      <div class="hud-badge">💀 Tode: <span id="ui-deaths" style="color:#ef4444;">0</span></div>
+    </div>
+    <div class="hud-card">
+      <div class="hud-badge">⏱️ Zeit: <span id="ui-time">0:00</span></div>
+    </div>
+  </div>
+
+  <!-- PC Controls Hint -->
+  <div class="controls-hint">
+    🎮 <span class="key-badge">W</span> <span class="key-badge">A</span> <span class="key-badge">S</span> <span class="key-badge">D</span> Bewegen<br>
+    🚀 <span class="key-badge">LEERTASTE</span> Springen | <span class="key-badge">SHIFT</span> Sprinten<br>
+    🖱️ Maus ziehen: Kamera drehen | Scrollen: Zoom
+  </div>
+
+  <!-- Mobile Controls -->
+  <div class="mobile-controls">
+    <div style="display:grid; grid-template-columns:repeat(3, 56px); gap:6px;">
+      <div></div>
+      <button class="touch-btn" style="width:56px; height:56px;" id="btn-up">▲</button>
+      <div></div>
+      <button class="touch-btn" style="width:56px; height:56px;" id="btn-left">◀</button>
+      <button class="touch-btn" style="width:56px; height:56px;" id="btn-down">▼</button>
+      <button class="touch-btn" style="width:56px; height:56px;" id="btn-right">▶</button>
+    </div>
+    <button class="touch-btn" id="btn-jump">SPRUNG</button>
+  </div>
+
+  <!-- Victory Modal -->
+  <div id="victory-modal">
+    <div class="modal-card">
+      <div style="font-size: 54px; margin-bottom: 8px;">🏆</div>
+      <h1>Glückwunsch!</h1>
+      <p>Du hast den Roblox Obby Hindernisparcours gemeistert!</p>
+      <div style="background: #f8fafc; padding: 14px; border-radius: 12px; margin-bottom: 20px; font-size: 14px; color: #334155; line-height: 1.6;">
+        Zeit: <b id="final-time">0:00</b><br>
+        Gesammelte Münzen: <b id="final-coins">0</b><br>
+        Versuche / Tode: <b id="final-deaths">0</b>
+      </div>
+      <button onclick="location.reload()">Nochmal spielen</button>
+    </div>
+  </div>
+
+  <script>
+    // Audio synthesizer using Web Audio API
+    class SoundFx {
+      constructor() {
+        this.ctx = null;
+      }
+      init() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) this.ctx = new AudioCtx();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+      playJump() {
+        this.init();
+        if (!this.ctx) return;
+        const o = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        o.frequency.setValueAtTime(150, this.ctx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(450, this.ctx.currentTime + 0.15);
+        g.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        g.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+        o.connect(g);
+        g.connect(this.ctx.destination);
+        o.start();
+        o.stop(this.ctx.currentTime + 0.16);
+      }
+      playOof() {
+        this.init();
+        if (!this.ctx) return;
+        const o = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(260, this.ctx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(75, this.ctx.currentTime + 0.18);
+        g.gain.setValueAtTime(0.35, this.ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+        o.connect(g);
+        g.connect(this.ctx.destination);
+        o.start();
+        o.stop(this.ctx.currentTime + 0.21);
+      }
+      playCoin() {
+        this.init();
+        if (!this.ctx) return;
+        const o = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(987.77, this.ctx.currentTime);
+        o.frequency.setValueAtTime(1318.51, this.ctx.currentTime + 0.08);
+        g.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.35);
+        o.connect(g);
+        g.connect(this.ctx.destination);
+        o.start();
+        o.stop(this.ctx.currentTime + 0.36);
+      }
+      playCheckpoint() {
+        this.init();
+        if (!this.ctx) return;
+        [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+          const t = this.ctx.currentTime + i * 0.09;
+          const o = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          o.type = 'triangle';
+          o.frequency.setValueAtTime(f, t);
+          g.gain.setValueAtTime(0.18, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+          o.connect(g);
+          g.connect(this.ctx.destination);
+          o.start(t);
+          o.stop(t + 0.32);
+        });
+      }
+      playBounce() {
+        this.init();
+        if (!this.ctx) return;
+        const o = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        o.type = 'triangle';
+        o.frequency.setValueAtTime(180, this.ctx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(700, this.ctx.currentTime + 0.25);
+        g.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        g.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
+        o.connect(g);
+        g.connect(this.ctx.destination);
+        o.start();
+        o.stop(this.ctx.currentTime + 0.26);
+      }
+    }
+    const sfx = new SoundFx();
+
+    // Scene & Renderer
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x82ccdd);
+    scene.fog = new THREE.FogExp2(0x82ccdd, 0.007);
+
+    const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 800);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    // Lights
+    const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(ambient);
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x444455, 0.5);
+    hemi.position.set(0, 50, 0);
+    scene.add(hemi);
+
+    const sun = new THREE.DirectionalLight(0xfffaed, 1.3);
+    sun.position.set(40, 80, 40);
+    sun.castShadow = true;
+    sun.shadow.mapSize.width = 1024;
+    sun.shadow.mapSize.height = 1024;
+    sun.shadow.bias = -0.0005;
+    scene.add(sun);
+
+    // Procedural Roblox character
+    function createFace() {
+      const c = document.createElement('canvas');
+      c.width = 128; c.height = 128;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#f5cd30';
+      ctx.fillRect(0, 0, 128, 128);
+      ctx.fillStyle = '#111';
+      ctx.beginPath(); ctx.arc(40, 50, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(88, 50, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#111'; ctx.lineWidth = 6; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(64, 68, 26, 0.25 * Math.PI, 0.75 * Math.PI, false); ctx.stroke();
+      const t = new THREE.CanvasTexture(c);
+      return t;
+    }
+
+    const yellowMat = new THREE.MeshStandardMaterial({ color: 0xf5cd30, roughness: 0.4 });
+    const blueMat = new THREE.MeshStandardMaterial({ color: 0x0d69ac, roughness: 0.4 });
+    const greenMat = new THREE.MeshStandardMaterial({ color: 0x278d2b, roughness: 0.4 });
+    const headMats = [yellowMat, yellowMat, yellowMat, yellowMat, new THREE.MeshStandardMaterial({ map: createFace() }), yellowMat];
+
+    const charGroup = new THREE.Group();
+    const head = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.0, 1.0), headMats);
+    head.position.set(0, 3.25, 0);
+    head.castShadow = true;
+    charGroup.add(head);
+
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.8, 0.9), blueMat);
+    torso.position.set(0, 1.9, 0);
+    torso.castShadow = true;
+    charGroup.add(torso);
+
+    function createLimb(w, h, d, mat, x, y) {
+      const p = new THREE.Group();
+      p.position.set(x, y, 0);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      m.position.set(0, -h / 2, 0);
+      m.castShadow = true;
+      p.add(m);
+      charGroup.add(p);
+      return p;
+    }
+
+    const leftArm = createLimb(0.7, 1.7, 0.7, yellowMat, 1.15, 2.7);
+    const rightArm = createLimb(0.7, 1.7, 0.7, yellowMat, -1.15, 2.7);
+    const leftLeg = createLimb(0.75, 1.8, 0.8, greenMat, 0.42, 1.0);
+    const rightLeg = createLimb(0.75, 1.8, 0.8, greenMat, -0.42, 1.0);
+    scene.add(charGroup);
+
+    // Level Building & Colliders
+    const solids = [];
+    const hazards = [];
+    const bouncePads = [];
+    const checkpoints = [];
+    const coins = [];
+    const animators = [];
+
+    const neonRed = new THREE.MeshStandardMaterial({ color: 0xff1122, emissive: 0xff0022, emissiveIntensity: 1.8 });
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, metalness: 0.8, roughness: 0.2 });
+
+    function addBox(x, y, z, w, h, d, col, type = 'solid') {
+      const geo = new THREE.BoxGeometry(w, h, d);
+      const mat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.4 });
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(x, y, z);
+      m.castShadow = true; m.receiveShadow = true;
+      scene.add(m);
+      const box = new THREE.Box3().setFromObject(m);
+      solids.push({ mesh: m, box, type });
+      return m;
+    }
+
+    function addLava(x, y, z, w, h, d) {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), neonRed);
+      m.position.set(x, y, z);
+      scene.add(m);
+      const box = new THREE.Box3().setFromObject(m);
+      hazards.push({ mesh: m, box });
+      return m;
+    }
+
+    function addBounce(x, y, z) {
+      const m = addBox(x, y, z, 3.5, 0.6, 3.5, 0xffd700, 'bounce');
+      bouncePads.push({ mesh: m, box: new THREE.Box3().setFromObject(m), power: 27 });
+      return m;
+    }
+
+    function addCP(id, x, y, z) {
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.3, 0.3, 20), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+      base.position.set(x, y + 0.15, z);
+      scene.add(base);
+
+      const light = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.35, 20), new THREE.MeshStandardMaterial({
+        color: id === 1 ? 0x00ff66 : 0xffaa00,
+        emissive: id === 1 ? 0x00ee44 : 0xaa5500,
+        emissiveIntensity: 1.0
+      }));
+      light.position.set(x, y + 0.2, z);
+      scene.add(light);
+
+      const box = new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(x, y + 1.5, z), new THREE.Vector3(4, 3, 4));
+      checkpoints.push({ id, pos: new THREE.Vector3(x, y + 0.5, z), light, box });
+    }
+
+    function addCoin(x, y, z) {
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.2, 16), goldMat);
+      m.rotation.x = Math.PI / 2;
+      m.position.set(x, y, z);
+      scene.add(m);
+      coins.push({ mesh: m, pos: new THREE.Vector3(x, y, z), collected: false });
+    }
+
+    // Build Obstacle Course
+    // Stage 1: Spawn
+    addBox(0, 0, 0, 12, 1.5, 12, 0x4a90e2);
+    addCP(1, 0, 0.75, 0);
+
+    addBox(0, 0, 11, 4, 1.2, 4, 0xff5252); addCoin(0, 2.5, 11);
+    addBox(3, 0.5, 18, 3.5, 1.2, 3.5, 0xffb142); addCoin(3, 3, 18);
+    addBox(-3, 1, 25, 3.5, 1.2, 3.5, 0x2ed573); addCoin(-3, 3.5, 25);
+    addBox(0, 1.5, 32, 4, 1.2, 4, 0x1e90ff); addCoin(0, 4, 32);
+
+    // Stage 2: Lava
+    addBox(0, 1.5, 41, 10, 1.5, 10, 0x57606f); addCP(2, 0, 2.25, 41);
+    addBox(0, 1.5, 52, 6, 1.2, 8, 0x747d8c);
+    addLava(0, 2.15, 58, 6, 0.4, 1.6);
+    addBox(0, 1.5, 63, 5, 1.2, 4, 0x70a1ff); addCoin(0, 4, 63);
+    addLava(0, 2.15, 67, 6, 0.4, 1.8);
+    addBox(0, 1.5, 72, 5, 1.2, 4, 0x70a1ff); addCoin(0, 4, 72);
+    addLava(0, 2.15, 76, 6, 0.4, 1.8);
+
+    // Stage 3: Moving
+    addBox(0, 1.5, 83, 10, 1.5, 10, 0x57606f); addCP(3, 0, 2.25, 83);
+    const mPlat1 = addBox(0, 2, 95, 4.5, 1.2, 4.5, 0x9b59b6, 'moving');
+    const mBox1 = solids.find(s => s.mesh === mPlat1).box;
+    animators.push(t => {
+      mPlat1.position.x = Math.sin(t * 1.5) * 6;
+      mBox1.setFromObject(mPlat1);
+    });
+    addBox(0, 2.5, 106, 4, 1.2, 4, 0x34495e); addCoin(0, 5, 106);
+
+    const mPlat2 = addBox(0, 3, 116, 4.5, 1.2, 4.5, 0x1abc9c, 'moving');
+    const mBox2 = solids.find(s => s.mesh === mPlat2).box;
+    animators.push(t => {
+      mPlat2.position.z = 116 + Math.cos(t * 1.4) * 4.5;
+      mBox2.setFromObject(mPlat2);
+    });
+
+    // Stage 4: Trampoline
+    addBox(0, 3.5, 128, 10, 1.5, 10, 0x57606f); addCP(4, 0, 4.25, 128);
+    addBounce(0, 3.5, 139);
+    addBox(0, 7.0, 147, 8, 8, 2, 0xe74c3c); // high wall
+    addBox(0, 9.0, 156, 6, 1.5, 6, 0x2ecc71); addCoin(0, 11.5, 156);
+    addBounce(0, 9.0, 164);
+
+    // Stage 5: Spinner
+    addBox(0, 12.0, 176, 10, 1.5, 10, 0x57606f); addCP(5, 0, 12.75, 176);
+    addBox(0, 12.0, 188, 2, 0.8, 14, 0xf39c12);
+    const spinner = new THREE.Mesh(new THREE.BoxGeometry(10, 0.8, 0.8), neonRed);
+    spinner.position.set(0, 13, 204);
+    scene.add(spinner);
+    const spinBox = new THREE.Box3().setFromObject(spinner);
+    hazards.push({ mesh: spinner, box: spinBox });
+    animators.push(t => {
+      spinner.rotation.y = t * 2.2;
+      spinBox.setFromObject(spinner);
+    });
+    addBox(0, 12.0, 214, 2, 0.8, 14, 0xf39c12); addCoin(0, 14, 214);
+
+    // Stage 6: Stairway to Finish
+    addBox(0, 12.0, 226, 10, 1.5, 10, 0x57606f); addCP(6, 0, 12.75, 226);
+    for (let i = 0; i < 6; i++) {
+      const stepX = Math.sin(i * 0.8) * 3.5;
+      const stepY = 13 + i * 1.3;
+      const stepZ = 234 + i * 4.5;
+      addBox(stepX, stepY, stepZ, 3.2, 0.9, 3.2, 0x3498db);
+      if (i % 2 === 0) addCoin(stepX, stepY + 2, stepZ);
+    }
+
+    // Finish Island
+    const finZ = 265; const finY = 22;
+    addBox(0, finY, finZ, 16, 2, 16, 0x10ac84);
+    const finishTrigger = new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(0, finY + 2, finZ), new THREE.Vector3(6, 4, 6));
+
+    // Player State & Physics
+    let currentCP = new THREE.Vector3(0, 2.5, 0);
+    const velocity = new THREE.Vector3();
+    let isGrounded = true;
+    let walkCycle = 0;
+    let rotationY = 0;
+    let deaths = 0;
+    let coinsCount = 0;
+    let stage = 1;
+    let isFinished = false;
+    let gameTime = 0;
+
+    function respawn() {
+      charGroup.position.copy(currentCP);
+      velocity.set(0, 0, 0);
+      isGrounded = true;
+    }
+    respawn();
+
+    function die() {
+      sfx.playOof();
+      deaths++;
+      document.getElementById('ui-deaths').textContent = deaths;
+      respawn();
+    }
+
+    // Camera Orbit
+    let camYaw = 0;
+    let camPitch = 0.35;
+    let camDist = 14;
+    let isDown = false;
+    let px = 0, py = 0;
+
+    window.addEventListener('mousedown', e => { isDown = true; px = e.clientX; py = e.clientY; sfx.init(); });
+    window.addEventListener('mousemove', e => {
+      if (!isDown) return;
+      camYaw -= (e.clientX - px) * 0.006;
+      camPitch = Math.max(0.08, Math.min(1.4, camPitch + (e.clientY - py) * 0.006));
+      px = e.clientX; py = e.clientY;
+    });
+    window.addEventListener('mouseup', () => isDown = false);
+    window.addEventListener('wheel', e => {
+      camDist = Math.max(6, Math.min(26, camDist + e.deltaY * 0.02));
+    });
+
+    // Keyboard controls
+    const keys = { w: false, a: false, s: false, d: false, space: false, shift: false };
+    window.addEventListener('keydown', e => {
+      sfx.init();
+      if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.w = true;
+      if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.s = true;
+      if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.a = true;
+      if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.d = true;
+      if (e.code === 'Space') { keys.space = true; e.preventDefault(); }
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys.shift = true;
+      if (e.code === 'KeyR') die();
+    });
+    window.addEventListener('keyup', e => {
+      if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.w = false;
+      if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.s = false;
+      if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.a = false;
+      if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.d = false;
+      if (e.code === 'Space') keys.space = false;
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys.shift = false;
+    });
+
+    // Mobile buttons
+    const bindTouch = (id, key) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('touchstart', (e) => { e.preventDefault(); keys[key] = true; sfx.init(); });
+      el.addEventListener('touchend', () => keys[key] = false);
+    };
+    bindTouch('btn-up', 'w');
+    bindTouch('btn-down', 's');
+    bindTouch('btn-left', 'a');
+    bindTouch('btn-right', 'd');
+    bindTouch('btn-jump', 'space');
+
+    // Main Game Loop
+    const clock = new THREE.Clock();
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = Math.min(clock.getDelta(), 0.1);
+      const elapsed = clock.getElapsedTime();
+
+      if (!isFinished) {
+        gameTime += delta;
+        const mins = Math.floor(gameTime / 60);
+        const secs = Math.floor(gameTime % 60).toString().padStart(2, '0');
+        document.getElementById('ui-time').textContent = mins + ':' + secs;
+      }
+
+      // Animators & Coins
+      animators.forEach(fn => fn(elapsed));
+      coins.forEach((c, idx) => {
+        if (!c.collected) {
+          c.mesh.rotation.y = elapsed * 3;
+          c.mesh.position.y = c.pos.y + Math.sin(elapsed * 4 + idx) * 0.2;
+        }
+      });
+
+      // Player Movement
+      let mx = 0, mz = 0;
+      if (keys.w) mz += 1;
+      if (keys.s) mz -= 1;
+      if (keys.a) mx -= 1;
+      if (keys.d) mx += 1;
+
+      const speed = keys.shift ? 19.0 : 13.0;
+      const isMoving = mx !== 0 || mz !== 0;
+
+      if (isMoving) {
+        const inputAngle = Math.atan2(mx, mz);
+        const targetAngle = camYaw + inputAngle;
+        let diff = targetAngle - rotationY;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        rotationY += diff * Math.min(1, 16 * delta);
+        charGroup.rotation.y = rotationY;
+
+        velocity.x = Math.sin(targetAngle) * speed;
+        velocity.z = Math.cos(targetAngle) * speed;
+      } else {
+        velocity.x = THREE.MathUtils.lerp(velocity.x, 0, 16 * delta);
+        velocity.z = THREE.MathUtils.lerp(velocity.z, 0, 16 * delta);
+      }
+
+      // Jump
+      if (keys.space && isGrounded) {
+        velocity.y = 20.5;
+        isGrounded = false;
+        sfx.playJump();
+      }
+
+      velocity.y -= 46.0 * delta;
+      if (velocity.y < -50) velocity.y = -50;
+
+      // Collisions
+      const nextPos = charGroup.position.clone();
+      nextPos.x += velocity.x * delta;
+      nextPos.y += velocity.y * delta;
+      nextPos.z += velocity.z * delta;
+
+      const halfW = 0.65;
+      const charH = 3.8;
+      let grounded = false;
+
+      const testY = new THREE.Box3(
+        new THREE.Vector3(charGroup.position.x - halfW, nextPos.y, charGroup.position.z - halfW),
+        new THREE.Vector3(charGroup.position.x + halfW, nextPos.y + charH, charGroup.position.z + halfW)
+      );
+
+      for (const sol of solids) {
+        if (testY.intersectsBox(sol.box)) {
+          if (velocity.y <= 0 && charGroup.position.y >= sol.box.max.y - 0.7) {
+            nextPos.y = sol.box.max.y;
+            velocity.y = 0;
+            grounded = true;
+            if (sol.type === 'bounce') {
+              velocity.y = 28;
+              grounded = false;
+              sfx.playBounce();
+            }
+          }
+        }
+      }
+      isGrounded = grounded;
+
+      // Horizontal wall collisions
+      const testX = new THREE.Box3(
+        new THREE.Vector3(nextPos.x - halfW, nextPos.y + 0.3, charGroup.position.z - halfW),
+        new THREE.Vector3(nextPos.x + halfW, nextPos.y + charH - 0.3, charGroup.position.z + halfW)
+      );
+      for (const sol of solids) {
+        if (testX.intersectsBox(sol.box)) { nextPos.x = charGroup.position.x; velocity.x = 0; break; }
+      }
+
+      const testZ = new THREE.Box3(
+        new THREE.Vector3(nextPos.x - halfW, nextPos.y + 0.3, nextPos.z - halfW),
+        new THREE.Vector3(nextPos.x + halfW, nextPos.y + charH - 0.3, nextPos.z + halfW)
+      );
+      for (const sol of solids) {
+        if (testZ.intersectsBox(sol.box)) { nextPos.z = charGroup.position.z; velocity.z = 0; break; }
+      }
+
+      charGroup.position.copy(nextPos);
+
+      // Player Box for triggers & hazards
+      const pBox = new THREE.Box3().setFromCenterAndSize(
+        new THREE.Vector3(nextPos.x, nextPos.y + charH / 2, nextPos.z),
+        new THREE.Vector3(halfW * 2, charH, halfW * 2)
+      );
+
+      // Hazards
+      for (const h of hazards) {
+        if (pBox.intersectsBox(h.box)) { die(); break; }
+      }
+      if (charGroup.position.y < -12) die();
+
+      // Checkpoints
+      for (const cp of checkpoints) {
+        if (pBox.intersectsBox(cp.box) && cp.id > stage) {
+          stage = cp.id;
+          currentCP.set(cp.pos.x, cp.pos.y + 1.2, cp.pos.z);
+          cp.light.material.color.setHex(0x00ff66);
+          cp.light.material.emissive.setHex(0x00ee44);
+          sfx.playCheckpoint();
+          document.getElementById('ui-stage').textContent = stage;
+        }
+      }
+
+      // Coins
+      coins.forEach(c => {
+        if (!c.collected && pBox.distanceToPoint(c.pos) < 1.4) {
+          c.collected = true;
+          c.mesh.visible = false;
+          coinsCount++;
+          sfx.playCoin();
+          document.getElementById('ui-coins').textContent = coinsCount;
+        }
+      });
+
+      // Finish
+      if (!isFinished && pBox.intersectsBox(finishTrigger)) {
+        isFinished = true;
+        document.getElementById('final-time').textContent = document.getElementById('ui-time').textContent;
+        document.getElementById('final-coins').textContent = coinsCount;
+        document.getElementById('final-deaths').textContent = deaths;
+        document.getElementById('victory-modal').style.display = 'flex';
+      }
+
+      // Limb swing animations
+      if (!isGrounded) {
+        leftArm.rotation.x = -1.2; rightArm.rotation.x = -1.2;
+        leftLeg.rotation.x = 0.35; rightLeg.rotation.x = -0.2;
+      } else if (isMoving) {
+        walkCycle += delta * 12;
+        const a = Math.sin(walkCycle) * 0.9;
+        leftArm.rotation.x = -a; rightArm.rotation.x = a;
+        leftLeg.rotation.x = a; rightLeg.rotation.x = -a;
+      } else {
+        leftArm.rotation.set(0, 0, 0); rightArm.rotation.set(0, 0, 0);
+        leftLeg.rotation.set(0, 0, 0); rightLeg.rotation.set(0, 0, 0);
+      }
+
+      // Camera Follow
+      const target = charGroup.position.clone();
+      target.y += 2.2;
+      const hDist = camDist * Math.cos(camPitch);
+      const vDist = camDist * Math.sin(camPitch);
+      const cx = target.x - Math.sin(camYaw) * hDist;
+      const cz = target.z - Math.cos(camYaw) * hDist;
+      const cy = target.y + vDist;
+      camera.position.lerp(new THREE.Vector3(cx, cy, cz), 0.25);
+      camera.lookAt(target);
+
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>

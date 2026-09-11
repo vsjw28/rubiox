@@ -1,0 +1,6 @@
+{
+  "name": "Roblox Obby 3D",
+  "description": "3D-Hindernisparcours im Roblox-Stil in atmosphärischer Nacht-Optik mit Startmenü, 1v1 Multiplayer-Duell auf zwei parallelen Renn-Obbys, Speedrun-Timer, anspruchsvollen Hindernissen und flüssiger Steuerung.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
